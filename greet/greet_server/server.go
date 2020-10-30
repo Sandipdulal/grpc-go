@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/grpc-go/greet/greetpb"
 	"google.golang.org/grpc"
+	"io"
 	"log"
 	"net"
 	"strconv"
@@ -40,6 +41,25 @@ func (s *Server) GreetManyTimes(request *greetpb.GreetMayTimesRequest, stream gr
 		time.Sleep(1 * time.Second)
 	}
 	return nil
+}
+
+func (s *Server) LongGreet(request greetpb.GreetService_LongGreetServer) error {
+	log.Println("LongGreet call invoked by client")
+	result := ""
+	for {
+		streamReq, err := request.Recv()
+		res := &greetpb.LongGreetResponse{
+			Result: result,
+		}
+		if err == io.EOF {
+			return request.SendAndClose(res)
+		}
+		if err != nil {
+			log.Fatalf("error reading stream request: %v", err)
+		}
+		result += "Hello! " + streamReq.GetGreeting().GetFirstName() + " " + streamReq.GetGreeting().GetLastName() + "."
+	}
+
 }
 
 func main() {

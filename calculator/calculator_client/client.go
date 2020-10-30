@@ -17,7 +17,32 @@ func main() {
 	defer cc.Close()
 	c := calculatorpb.NewCalculatorServiceClient(cc)
 	//doSum(c)
-	doPrimeDecomposition(c)
+	//doPrimeDecomposition(c)
+	doComputeAverage(c)
+
+}
+
+func doComputeAverage(c calculatorpb.CalculatorServiceClient) {
+	requests := []int64{1, 2, 3, 4}
+	stream, err := c.ComputeAverage(context.Background())
+	if err != nil {
+		log.Fatalf("error calling ComputeAverage rpc: %v \n", err)
+	}
+
+	for _, req := range requests {
+		err := stream.Send(&calculatorpb.ComputeAverageRequest{
+			Number: req,
+		})
+		if err != nil {
+			log.Fatalf("error sending stream request: %v \n", err)
+		}
+	}
+
+	result, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("error receiving response from server: %v \n", err)
+	}
+	log.Printf("ComputeAverage response:%v \n", result.GetResult())
 
 }
 
