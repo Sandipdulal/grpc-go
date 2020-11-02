@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/grpc-go/greet/greetpb"
 	"google.golang.org/grpc"
 	"io"
 	"log"
+	"time"
 )
 
 func main() {
@@ -18,7 +20,72 @@ func main() {
 	c := greetpb.NewGreetServiceClient(cc)
 	//doUnary(c)
 	//doServerStreaming(c)
-	doClientStreaming(c)
+	//doClientStreaming(c)
+	doBiDiStreaming(c)
+}
+
+func doBiDiStreaming(c greetpb.GreetServiceClient) {
+	requests := []*greetpb.GreetEveryoneRequest{
+		{
+			Greeting: &greetpb.Greeting{
+				FirstName: "John",
+				LastName:  "Wick",
+			},
+		},
+		{
+			Greeting: &greetpb.Greeting{
+				FirstName: "John",
+				LastName:  "Cena",
+			},
+		},
+		{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Van",
+				LastName:  "Dam",
+			},
+		},
+	}
+
+	stream, err := c.GreetEveryone(context.Background())
+	if err != nil {
+		log.Fatalf("error calling GreetEveryone rpc:%v", err)
+	}
+
+	waitChan := make(chan struct{})
+
+	//send multiple requests to server
+	go func() {
+		for _, req := range requests {
+			fmt.Printf("Sending message: %v \n", req)
+			err := stream.Send(req)
+			if err != nil {
+				log.Fatalf("error sending stream request: %v", err)
+			}
+			time.Sleep(1 * time.Second)
+		}
+		err := stream.CloseSend()
+		if err != nil {
+			log.Fatalf("error closing send channel: %v", err)
+		}
+	}()
+
+	//receive multiple response from server
+	go func() {
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				close(waitChan)
+				log.Fatalf("error receiving response: %v", err)
+			}
+			fmt.Printf("Received: %v \n", res.GetResult())
+		}
+		close(waitChan)
+	}()
+	<-waitChan
+
 }
 
 func doClientStreaming(c greetpb.GreetServiceClient) {

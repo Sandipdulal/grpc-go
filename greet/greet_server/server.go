@@ -43,23 +43,44 @@ func (s *Server) GreetManyTimes(request *greetpb.GreetMayTimesRequest, stream gr
 	return nil
 }
 
-func (s *Server) LongGreet(request greetpb.GreetService_LongGreetServer) error {
+func (s *Server) LongGreet(stream greetpb.GreetService_LongGreetServer) error {
 	log.Println("LongGreet call invoked by client")
 	result := ""
 	for {
-		streamReq, err := request.Recv()
+		streamReq, err := stream.Recv()
 		res := &greetpb.LongGreetResponse{
 			Result: result,
 		}
 		if err == io.EOF {
-			return request.SendAndClose(res)
+			return stream.SendAndClose(res)
 		}
 		if err != nil {
 			log.Fatalf("error reading stream request: %v", err)
 		}
 		result += "Hello! " + streamReq.GetGreeting().GetFirstName() + " " + streamReq.GetGreeting().GetLastName() + "."
 	}
+}
 
+func (s *Server) GreetEveryone(stream greetpb.GreetService_GreetEveryoneServer) error {
+	log.Println("GreetEveryone call invoked by client")
+	for {
+		streamReq, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			log.Fatalf("error receiving stream request: %v", err)
+			return err
+		}
+		result := "Hello, " + streamReq.GetGreeting().GetFirstName() + " " + streamReq.GetGreeting().GetLastName() + "!"
+		err = stream.Send(&greetpb.GreetEveryoneResponse{
+			Result: result,
+		})
+		if err != nil {
+			log.Fatalf("error sending greet everyone response: %v", err)
+			return err
+		}
+	}
 }
 
 func main() {

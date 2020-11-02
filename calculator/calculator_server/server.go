@@ -25,6 +25,7 @@ func (*server) Sum(ctx context.Context, req *calculatorpb.SumRequest) (res *calc
 }
 
 func (*server) PrimeNumberDecomposition(request *calculatorpb.PrimeNumberDecompositionRequest, stream calculatorpb.CalculatorService_PrimeNumberDecompositionServer) error {
+	log.Printf("PrimeNumberDecomposition request from client")
 	k := int64(2)
 	n := request.GetNumber()
 
@@ -46,6 +47,7 @@ func (*server) PrimeNumberDecomposition(request *calculatorpb.PrimeNumberDecompo
 }
 
 func (*server) ComputeAverage(request calculatorpb.CalculatorService_ComputeAverageServer) error {
+	log.Printf("ComputeAverage request from client")
 	sum := int64(0)
 	count := 0
 	for {
@@ -62,6 +64,32 @@ func (*server) ComputeAverage(request calculatorpb.CalculatorService_ComputeAver
 		sum += streamReq.GetNumber()
 		count++
 		fmt.Println(sum, count)
+	}
+
+}
+
+func (s *server) FindMaximum(stream calculatorpb.CalculatorService_FindMaximumServer) error {
+	log.Printf("FindMaximum request from client")
+	max := int32(0)
+	for {
+		streamReq, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			log.Fatalf("error receiving request: %v", err)
+			return err
+		}
+		num := streamReq.GetNumber()
+		if num > max {
+			max = num
+			err = stream.Send(&calculatorpb.FindMaximumResponse{
+				Result: num,
+			})
+			if err != nil {
+				log.Fatalf("error sending response: %v", err)
+			}
+		}
 	}
 
 }

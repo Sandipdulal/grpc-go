@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/grpc-go/calculator/calculatorpb"
 	"google.golang.org/grpc"
 	"io"
 	"log"
+	"time"
 )
 
 func main() {
@@ -18,8 +20,56 @@ func main() {
 	c := calculatorpb.NewCalculatorServiceClient(cc)
 	//doSum(c)
 	//doPrimeDecomposition(c)
-	doComputeAverage(c)
+	//doComputeAverage(c)
+	doFindMaximum(c)
 
+}
+
+func doFindMaximum(c calculatorpb.CalculatorServiceClient) {
+	requests := []int32{10, 12, 30, 14, 22, 50, 3, 6, 79}
+
+	stream, err := c.FindMaximum(context.Background())
+	if err != nil {
+		log.Fatalf("error calling FindMaximum rpc: %v", err)
+	}
+
+	closeChan := make(chan struct{})
+
+	//send multiple request
+	go func() {
+		for _, req := range requests {
+			fmt.Printf("Sending message: %v \n", req)
+			err := stream.Send(&calculatorpb.FindMaximumRequest{
+				Number: req,
+			})
+			if err != nil {
+				log.Fatalf("error sending rpc request: %v \n", err)
+			}
+			time.Sleep(1 * time.Second)
+		}
+		if err := stream.CloseSend(); err != nil {
+			log.Fatalf("error closing send stream: %v \n", err)
+		}
+	}()
+
+	//receive multiple response
+	go func() {
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				close(closeChan)
+				log.Fatalf("error receiving message: %v \n", err)
+			}
+			maximum := res.GetResult()
+			fmt.Printf("Received: %v \n", maximum)
+		}
+		close(closeChan)
+	}()
+
+	<-closeChan
 }
 
 func doComputeAverage(c calculatorpb.CalculatorServiceClient) {
