@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/grpc-go/calculator/calculatorpb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"io"
 	"log"
 	"time"
@@ -21,8 +23,37 @@ func main() {
 	//doSum(c)
 	//doPrimeDecomposition(c)
 	//doComputeAverage(c)
-	doFindMaximum(c)
+	//doFindMaximum(c)
+	doSqrtNumber(c)
 
+}
+
+func doSqrtNumber(c calculatorpb.CalculatorServiceClient) {
+	//valid call
+	doErrorCall(c, 9)
+	//error call
+	doErrorCall(c, -5)
+
+}
+
+func doErrorCall(c calculatorpb.CalculatorServiceClient, number int32) {
+	res, err := c.SquareRoot(context.Background(), &calculatorpb.SquareRootRequest{
+		Number: number,
+	})
+	if err != nil {
+		respErr, ok := status.FromError(err)
+		if ok {
+			fmt.Printf("error received from server: %v\n", respErr.Message())
+			if respErr.Code() == codes.InvalidArgument {
+				fmt.Printf("negative number sent: %v \n", number)
+				return
+			}
+		} else {
+			log.Fatalf("fatal error occured while computing square root :%v", respErr)
+			return
+		}
+	}
+	fmt.Printf("Square root of: %v is: %v \n", number, res.GetNumberRoot())
 }
 
 func doFindMaximum(c calculatorpb.CalculatorServiceClient) {
