@@ -6,6 +6,7 @@ import (
 	"github.com/grpc-go/greet/greetpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"io"
 	"log"
@@ -13,7 +14,12 @@ import (
 )
 
 func main() {
-	cc, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	creds, err := credentials.NewClientTLSFromFile("ssl/ca.crt", "")
+	if err != nil {
+		log.Fatalf("error loading CA certificate: %v \n", err)
+		return
+	}
+	cc, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(creds))
 	if err != nil {
 		log.Fatalf("unable to connect: %v", err)
 	}
@@ -44,7 +50,7 @@ func doUnaryWithDeadline(c greetpb.GreetServiceClient, duration time.Duration) {
 			if respErr.Code() == codes.DeadlineExceeded {
 				fmt.Println("request timeout")
 			} else {
-				log.Fatalf("unexpected error occured: %v\n", respErr)
+				log.Fatalf("unexpected error occured: %v\n", respErr.Message())
 			}
 		} else {
 			log.Fatalf("error calling GreetWithDeadline: %v", err)
