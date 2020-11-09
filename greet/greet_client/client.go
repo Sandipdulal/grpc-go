@@ -14,6 +14,7 @@ import (
 )
 
 func main() {
+	fmt.Println("Greet client started...")
 	creds, err := credentials.NewClientTLSFromFile("ssl/ca.crt", "")
 	if err != nil {
 		log.Fatalf("error loading CA certificate: %v \n", err)
